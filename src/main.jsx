@@ -111,7 +111,6 @@ function App() {
           expiration: expirationText,
           strike,
           premium,
-          contracts,
           income,
           optionYield,
           upside,
@@ -125,26 +124,17 @@ function App() {
       .filter(Boolean);
   }, [portfolio, targetWeeksOut, targetPercentAbove]);
 
-  const green = results.filter((r) => r.category === "green");
-  const yellow = results.filter((r) => r.category === "yellow");
-  const red = results.filter((r) => r.category === "red");
-
-  const totalIncome = results.reduce((sum, r) => sum + r.income, 0);
-  const greenIncome = green.reduce((sum, r) => sum + r.income, 0);
-  const yellowIncome = yellow.reduce((sum, r) => sum + r.income, 0);
-  const redIncome = red.reduce((sum, r) => sum + r.income, 0);
-
   function ResultCard({ r }) {
     return (
       <div className={`card result-card ${r.category}`}>
         <h2>{r.ticker}</h2>
         <p>Current stock price: <b>{currency(r.price)}</b></p>
-        <p>Suggested strike: <b>{currency(r.strike)}</b></p>
-        <p>Target above current price: <b>{r.upside.toFixed(2)}%</b></p>
+        <p>Strike you are selling: <b>{currency(r.strike)}</b></p>
+        <p>Minimum % above current price: <b>{r.upside.toFixed(2)}%</b></p>
         <p>Expiration: <b>{r.expiration}</b></p>
-        <p>Premium estimate: <b>{currency(r.premium)}</b></p>
+        <p>Premium you will receive: <b>{currency(r.premium)}</b></p>
         <p>Estimated cash income: <b>{currency(r.income)}</b></p>
-        <p>Option yield: <b>{r.optionYield.toFixed(2)}%</b></p>
+        <p>Return from premium: <b>{r.optionYield.toFixed(2)}%</b></p>
 
         <div className="range-box">
           <b>{targetWeeksOut}-week trading range:</b><br />
@@ -155,29 +145,6 @@ function App() {
           <b>Earnings check:</b><br />
           Earnings date: {r.earningsDate}<br />
           {r.warning.text}
-        </div>
-      </div>
-    );
-  }
-
-  function ResultsSummary() {
-    return (
-      <div className="summary-grid">
-        <div className="summary-card">
-          <span>Total potential earnings</span>
-          <b>{currency(totalIncome)}</b>
-        </div>
-        <div className="summary-card green">
-          <span>Green earnings</span>
-          <b>{currency(greenIncome)}</b>
-        </div>
-        <div className="summary-card yellow">
-          <span>Yellow earnings</span>
-          <b>{currency(yellowIncome)}</b>
-        </div>
-        <div className="summary-card red">
-          <span>Red earnings</span>
-          <b>{currency(redIncome)}</b>
         </div>
       </div>
     );
@@ -212,7 +179,6 @@ function App() {
       <header className="topbar">
         <div>
           <h1>YieldPilot Dashboard</h1>
-          <p>Covered call analyzer prototype</p>
         </div>
         <button className="secondary" onClick={() => setLoggedIn(false)}>
           Log out
@@ -222,14 +188,11 @@ function App() {
       <nav className="tabs">
         <button onClick={() => setActivePage("portfolio")}>Portfolio</button>
         <button onClick={() => setActivePage("results")}>Results Cards</button>
-        <button onClick={() => setActivePage("resultsTable")}>Results Table</button>
-        <button onClick={() => setActivePage("settings")}>Settings</button>
       </nav>
 
       {activePage === "portfolio" && (
         <section className="card">
           <h2>Saved Portfolio</h2>
-          <p>Enter ticker symbols and shares.</p>
 
           <table className="portfolio-table">
             <thead>
@@ -243,10 +206,9 @@ function App() {
 
             <tbody>
               {portfolio.map((row, index) => {
-                const ticker = row.ticker.toUpperCase().trim();
-                const data = sampleMarketData[ticker];
+                const data = sampleMarketData[row.ticker];
                 const price = data ? data.price : 0;
-                const value = price * Number(row.shares || 0);
+                const value = price * row.shares;
 
                 return (
                   <tr key={index}>
@@ -294,12 +256,10 @@ function App() {
             Add Position
           </button>
 
-          <button
-            onClick={() => {
-              setRan(true);
-              setActivePage("results");
-            }}
-          >
+          <button onClick={() => {
+            setRan(true);
+            setActivePage("results");
+          }}>
             Run Covered Call Analysis
           </button>
         </section>
@@ -310,157 +270,12 @@ function App() {
           {!ran ? (
             <div className="card">
               <h2>No analysis run yet</h2>
-              <p>Go to Portfolio and click Run Covered Call Analysis.</p>
             </div>
           ) : (
-            <>
-              <ResultsSummary />
-
-              <h2 className="section-title green-text">Green — cleaner setups</h2>
-              <div className="results-grid">
-                {green.map((r) => <ResultCard key={r.ticker} r={r} />)}
-              </div>
-
-              <h2 className="section-title yellow-text">Yellow — near recent trading range</h2>
-              <div className="results-grid">
-                {yellow.map((r) => <ResultCard key={r.ticker} r={r} />)}
-              </div>
-
-              <h2 className="section-title red-text">Red — earnings risk</h2>
-              <div className="results-grid">
-                {red.map((r) => <ResultCard key={r.ticker} r={r} />)}
-              </div>
-            </>
-          )}
-        </section>
-      )}
-
-      {activePage === "resultsTable" && (
-        <section>
-          {!ran ? (
-            <div className="card">
-              <h2>No table yet</h2>
-              <p>Go to Portfolio and click Run Covered Call Analysis.</p>
+            <div className="results-grid">
+              {results.map((r) => <ResultCard key={r.ticker} r={r} />)}
             </div>
-          ) : (
-            <>
-              <ResultsSummary />
-
-              <div className="card">
-                <h2>Results Table</h2>
-                <p>
-                  Same recommendations as the card view, shown in a spreadsheet-style format.
-                  Each stock has a main row plus an earnings/range detail row underneath it.
-                </p>
-
-                <table className="results-table">
-                  <thead>
-                    <tr>
-                      <th>Status</th>
-                      <th>Ticker</th>
-                      <th>Shares</th>
-                      <th>Stock Price</th>
-                      <th>Strike</th>
-                      <th>Expiration</th>
-                      <th>Premium</th>
-                      <th>Cash Income</th>
-                      <th>Yield</th>
-                      <th>Upside</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {results.map((r) => (
-                      <React.Fragment key={r.ticker}>
-                        <tr className={`table-main-row ${r.category}`}>
-                          <td>
-                            <span className={`status-pill ${r.category}`}>
-                              {r.categoryLabel}
-                            </span>
-                          </td>
-                          <td><b>{r.ticker}</b></td>
-                          <td>{r.shares}</td>
-                          <td>{currency(r.price)}</td>
-                          <td><b>{currency(r.strike)}</b></td>
-                          <td>{r.expiration}</td>
-                          <td>{currency(r.premium)}</td>
-                          <td><b>{currency(r.income)}</b></td>
-                          <td>{r.optionYield.toFixed(2)}%</td>
-                          <td>{r.upside.toFixed(2)}%</td>
-                        </tr>
-
-                        <tr className={`table-detail-row ${r.category}`}>
-                          <td></td>
-                          <td colSpan="9">
-                            <div className="table-detail-grid">
-                              <div>
-                                <b>{targetWeeksOut}-week trading range:</b><br />
-                                {currency(r.rangeLow)} – {currency(r.rangeHigh)}
-                              </div>
-
-                              <div>
-                                <b>Earnings date:</b><br />
-                                {r.earningsDate}
-                              </div>
-
-                              <div>
-                                <b>Earnings check:</b><br />
-                                {r.warning.text}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-
-                  <tfoot>
-                    <tr>
-                      <td colSpan="7"><b>Total Potential Earnings</b></td>
-                      <td><b>{currency(totalIncome)}</b></td>
-                      <td colSpan="2"></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </>
           )}
-        </section>
-      )}
-
-      {activePage === "settings" && (
-        <section className="card">
-          <h2>Analysis Settings</h2>
-
-          <label>Target weeks out</label>
-          <select
-            value={targetWeeksOut}
-            onChange={(e) => setTargetWeeksOut(Number(e.target.value))}
-          >
-            <option value={1}>1 week</option>
-            <option value={2}>2 weeks</option>
-            <option value={3}>3 weeks</option>
-            <option value={4}>4 weeks</option>
-          </select>
-
-          <label>Target strike above current stock price</label>
-          <select
-            value={targetPercentAbove}
-            onChange={(e) => setTargetPercentAbove(Number(e.target.value))}
-          >
-            <option value={3}>3% above current price</option>
-            <option value={4}>4% above current price</option>
-            <option value={5}>5% above current price</option>
-            <option value={6}>6% above current price</option>
-            <option value={7}>7% above current price</option>
-            <option value={8}>8% above current price</option>
-            <option value={10}>10% above current price</option>
-          </select>
-
-          <div className="warning">
-            <b>Compliance note:</b> This should be presented as educational
-            software, not personalized financial advice.
-          </div>
         </section>
       )}
     </div>
