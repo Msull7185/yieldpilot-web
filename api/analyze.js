@@ -1,3 +1,34 @@
+function getNextFridayFromWeeksOut(weeksOut) {
+  const today = new Date();
+
+  const target = new Date(today);
+  target.setDate(today.getDate() + Number(weeksOut) * 7);
+
+  const day = target.getDay(); // Sunday = 0, Friday = 5
+  let daysUntilFriday = 5 - day;
+
+  if (daysUntilFriday < 0) {
+    daysUntilFriday += 7;
+  }
+
+  target.setDate(target.getDate() + daysUntilFriday);
+
+  return target.toISOString().slice(0, 10);
+}
+
+function getStrikeIncrement(price) {
+  if (price < 25) return 0.5;
+  if (price < 100) return 1;
+  if (price < 250) return 2.5;
+  if (price < 500) return 5;
+  return 10;
+}
+
+function roundUpToOptionStrike(minimumStrike, stockPrice) {
+  const increment = getStrikeIncrement(stockPrice);
+  return Number((Math.ceil(minimumStrike / increment) * increment).toFixed(2));
+}
+
 export default async function handler(req, res) {
   try {
     res.setHeader("Content-Type", "application/json");
@@ -14,7 +45,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const { portfolio = [], targetWeeksOut = 2, targetPercentAbove = 5 } = req.body || {};
+    const {
+      portfolio = [],
+      targetWeeksOut = 2,
+      targetPercentAbove = 5,
+    } = req.body || {};
+
+    const expirationText = getNextFridayFromWeeksOut(targetWeeksOut);
 
     const results = await Promise.all(
       portfolio.map(async (p) => {
@@ -23,24 +60,29 @@ export default async function handler(req, res) {
 
         if (!ticker || shares < 100) return null;
 
-        const url = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`;
-        const response = await fetch(url);
+        const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`;
+        const response = await fetch(quoteUrl);
         const quote = await response.json();
 
         const price = Number(quote.c);
 
         if (!price) return null;
 
-        const expiration = new Date();
-        expiration.setDate(expiration.getDate() + Number(targetWeeksOut) * 7);
+        const minimumStrike = price * (1 + Number(targetPercentAbove) / 100);
+        const strike = roundUpToOptionStrike(minimumStrike, price);
 
-        const strike = Number((price * (1 + Number(targetPercentAbove) / 100)).toFixed(2));
-        const premium = Number(Math.max(0.35, price * 0.006 * (Number(targetWeeksOut) / 2)).toFixed(2));
+        const actualPercentAbove = ((strike - price) / price) * 100;
+
+        const premium = Number(
+          Math.max(
+            0.35,
+            price * 0.006 * (Number(targetWeeksOut) / 2)
+          ).toFixed(2)
+        );
 
         const contracts = Math.floor(shares / 100);
         const income = premium * 100 * contracts;
         const optionYield = (premium / price) * 100;
-        const upside = ((strike - price) / price) * 100;
 
         return {
           ticker,
@@ -51,8 +93,8 @@ export default async function handler(req, res) {
           contracts,
           income,
           optionYield,
-          upside,
-          expiration: expiration.toISOString().slice(0, 10),
+          upside: actualPercentAbove,
+          expiration: expirationText,
           earningsDate: "Coming soon",
           rangeLow: Number((price * 0.96).toFixed(2)),
           rangeHigh: Number((price * 1.04).toFixed(2)),
