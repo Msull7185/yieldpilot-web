@@ -2,62 +2,12 @@ import React, { useMemo, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./style.css";
 
-const sampleMarketData = {
-  AAPL: {
-    price: 173.42,
-    earningsDate: "2026-05-07",
-    ranges: {
-      1: [169, 179],
-      2: [166, 181],
-      3: [164, 184],
-      4: [160, 187],
-    },
-  },
-  MSFT: {
-    price: 421.18,
-    earningsDate: "2026-04-30",
-    ranges: {
-      1: [412, 432],
-      2: [405, 438],
-      3: [398, 445],
-      4: [392, 451],
-    },
-  },
-  NVDA: {
-    price: 907.66,
-    earningsDate: "2026-05-20",
-    ranges: {
-      1: [880, 945],
-      2: [860, 965],
-      3: [835, 990],
-      4: [810, 1020],
-    },
-  },
-};
-
 function currency(n) {
-  return n.toLocaleString("en-US", {
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
+  return Number(n).toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
   });
-}
-
-function getEarningsWarning(earningsDate, expirationDate) {
-  const today = new Date();
-  const earnings = new Date(earningsDate);
-  const expiration = new Date(expirationDate);
-
-  if (earnings > today && earnings <= expiration) {
-    return {
-      color: "red",
-      text: "Earnings occur before this option expires. Consider waiting until after earnings.",
-    };
-  }
-
-  return {
-    color: "green",
-    text: "No earnings warning based on current demo data.",
-  };
 }
 
 function App() {
@@ -66,6 +16,8 @@ function App() {
   const [targetWeeksOut, setTargetWeeksOut] = useState(2);
   const [targetPercentAbove, setTargetPercentAbove] = useState(5);
   const [ran, setRan] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [portfolio, setPortfolio] = useState([
     { ticker: "AAPL", shares: 300 },
@@ -73,100 +25,55 @@ function App() {
     { ticker: "NVDA", shares: 100 },
   ]);
 
+  const [results, setResults] = useState([]);
+
   const portfolioValue = useMemo(() => {
-    return portfolio.reduce((sum, row) => {
-      const ticker = row.ticker.toUpperCase().trim();
-      const data = sampleMarketData[ticker];
-
-      if (!data) {
-        return sum;
-      }
-
-      return sum + data.price * Number(row.shares || 0);
+    return results.reduce((sum, row) => {
+      return sum + Number(row.price || 0) * Number(row.shares || 0);
     }, 0);
-  }, [portfolio]);
-
-  const results = useMemo(() => {
-    return portfolio
-      .map((p) => {
-        const ticker = p.ticker.toUpperCase().trim();
-        const data = sampleMarketData[ticker];
-
-        if (!data || p.shares < 100) {
-          return null;
-        }
-
-        const expiration = new Date();
-        expiration.setDate(expiration.getDate() + targetWeeksOut * 7);
-        const expirationText = expiration.toISOString().slice(0, 10);
-
-        const strike = Number(
-          (data.price * (1 + targetPercentAbove / 100)).toFixed(2)
-        );
-
-        const premium = Number(
-          Math.max(
-            0.35,
-            data.price * 0.006 * (targetWeeksOut / 2)
-          ).toFixed(2)
-        );
-
-        const contracts = Math.floor(p.shares / 100);
-        const income = premium * 100 * contracts;
-        const optionYield = (premium / data.price) * 100;
-        const upside = ((strike - data.price) / data.price) * 100;
-        const range = data.ranges[targetWeeksOut] || data.ranges[2];
-
-        const warning = getEarningsWarning(
-          data.earningsDate,
-          expirationText
-        );
-
-        let category = "green";
-
-        if (warning.color === "red") {
-          category = "red";
-        } else if (strike < range[1]) {
-          category = "yellow";
-        }
-
-        const risk =
-          category === "green"
-            ? "Low"
-            : category === "yellow"
-            ? "Medium"
-            : "High";
-
-        return {
-          ticker,
-          shares: p.shares,
-          price: data.price,
-          earningsDate: data.earningsDate,
-          expiration: expirationText,
-          strike,
-          premium,
-          contracts,
-          income,
-          optionYield,
-          upside,
-          rangeLow: range[0],
-          rangeHigh: range[1],
-          warning,
-          category,
-          risk,
-        };
-      })
-      .filter(Boolean);
-  }, [portfolio, targetWeeksOut, targetPercentAbove]);
+  }, [results]);
 
   const green = results.filter((r) => r.category === "green");
   const yellow = results.filter((r) => r.category === "yellow");
   const red = results.filter((r) => r.category === "red");
 
-  const totalIncome = results.reduce((sum, r) => sum + r.income, 0);
-  const greenIncome = green.reduce((sum, r) => sum + r.income, 0);
-  const yellowIncome = yellow.reduce((sum, r) => sum + r.income, 0);
-  const redIncome = red.reduce((sum, r) => sum + r.income, 0);
+  const totalIncome = results.reduce((sum, r) => sum + Number(r.income || 0), 0);
+  const greenIncome = green.reduce((sum, r) => sum + Number(r.income || 0), 0);
+  const yellowIncome = yellow.reduce((sum, r) => sum + Number(r.income || 0), 0);
+  const redIncome = red.reduce((sum, r) => sum + Number(r.income || 0), 0);
+
+  async function runAnalysis() {
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          portfolio,
+          targetWeeksOut,
+          targetPercentAbove,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Analysis failed");
+      }
+
+      setResults(data.results || []);
+      setRan(true);
+      setActivePage("resultsTable");
+    } catch (error) {
+      setErrorMessage(error.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function ResultsSummary() {
     return (
@@ -199,50 +106,24 @@ function App() {
       <div className={`card result-card ${r.category}`}>
         <h2>{r.ticker}</h2>
 
-        <p>
-          Current stock price: <b>{currency(r.price)}</b>
-        </p>
-
-        <p>
-          Strike you are selling: <b>{currency(r.strike)}</b>
-        </p>
-
-        <p>
-          Minimum % above current price: <b>{r.upside.toFixed(2)}%</b>
-        </p>
-
-        <p>
-          Expiration: <b>{r.expiration}</b>
-        </p>
-
-        <p>
-          Premium you will receive: <b>{currency(r.premium)}</b>
-        </p>
-
-        <p>
-          Estimated cash income: <b>{currency(r.income)}</b>
-        </p>
-
-        <p>
-          Return from premium: <b>{r.optionYield.toFixed(2)}%</b>
-        </p>
-
-        <p>
-          Assignment risk score: <b>{r.risk}</b>
-        </p>
+        <p>Current stock price: <b>{currency(r.price)}</b></p>
+        <p>Strike you are selling: <b>{currency(r.strike)}</b></p>
+        <p>Minimum % above current price: <b>{Number(r.upside || 0).toFixed(2)}%</b></p>
+        <p>Expiration: <b>{r.expiration}</b></p>
+        <p>Premium you will receive: <b>{currency(r.premium)}</b></p>
+        <p>Estimated cash income: <b>{currency(r.income)}</b></p>
+        <p>Return from premium: <b>{Number(r.optionYield || 0).toFixed(2)}%</b></p>
+        <p>Assignment risk score: <b>{r.risk}</b></p>
 
         <div className="range-box">
-          <b>{targetWeeksOut}-week trading range:</b>
-          <br />
+          <b>{targetWeeksOut}-week trading range:</b><br />
           {currency(r.rangeLow)} – {currency(r.rangeHigh)}
         </div>
 
-        <div className={`warning ${r.warning.color}`}>
-          <b>Earnings check:</b>
-          <br />
-          Earnings date: {r.earningsDate}
-          <br />
-          {r.warning.text}
+        <div className={`warning ${r.warning?.color || "green"}`}>
+          <b>Earnings check:</b><br />
+          Earnings date: {r.earningsDate || "Coming soon"}<br />
+          {r.warning?.text || "Earnings check will be added next."}
         </div>
       </div>
     );
@@ -254,14 +135,11 @@ function App() {
         <div className="hero">
           <div>
             <div className="badge">Covered Call SaaS Prototype</div>
-
             <h1>YieldPilot</h1>
-
             <p>
               A portfolio-based covered call analyzer where subscribers save
               tickers, run weekly scans, and get simple income recommendations.
             </p>
-
             <div className="hero-list">
               <div>🔒 User login and saved portfolios</div>
               <div>📊 Covered call scoring and recommendation cards</div>
@@ -271,22 +149,15 @@ function App() {
 
           <div className="card login-card">
             <h2>Sign in</h2>
-
             <p>Demo login for prototype</p>
-
             <label>Email</label>
             <input value="demo@yieldpilot.com" readOnly />
-
             <label>Password</label>
             <input value="password123" type="password" readOnly />
-
-            <button onClick={() => setLoggedIn(true)}>
-              Open Dashboard
-            </button>
-
+            <button onClick={() => setLoggedIn(true)}>Open Dashboard</button>
             <p className="small-note">
-              In the real product this connects to user accounts, saved
-              portfolios, live market data, and Stripe subscription status.
+              In the real product this connects to user accounts, saved portfolios,
+              live market data, and Stripe subscription status.
             </p>
           </div>
         </div>
@@ -301,38 +172,29 @@ function App() {
           <h1>YieldPilot Dashboard</h1>
           <p>Covered call analyzer prototype</p>
         </div>
-
-        <button
-          className="secondary"
-          onClick={() => setLoggedIn(false)}
-        >
+        <button className="secondary" onClick={() => setLoggedIn(false)}>
           Log out
         </button>
       </header>
 
       <nav className="tabs">
-        <button onClick={() => setActivePage("portfolio")}>
-          Portfolio
-        </button>
-
-        <button onClick={() => setActivePage("resultsTable")}>
-          Results Table
-        </button>
-
-        <button onClick={() => setActivePage("resultsCards")}>
-          Results Cards
-        </button>
-
-        <button onClick={() => setActivePage("settings")}>
-          Settings
-        </button>
+        <button onClick={() => setActivePage("portfolio")}>Portfolio</button>
+        <button onClick={() => setActivePage("resultsTable")}>Results Table</button>
+        <button onClick={() => setActivePage("resultsCards")}>Results Cards</button>
+        <button onClick={() => setActivePage("settings")}>Settings</button>
       </nav>
 
       {activePage === "portfolio" && (
         <section className="card">
           <h2>Saved Portfolio</h2>
-
           <p>Enter ticker symbols and shares.</p>
+
+          {errorMessage && (
+            <div className="warning red">
+              <b>Error:</b><br />
+              {errorMessage}
+            </div>
+          )}
 
           <table className="portfolio-table">
             <thead>
@@ -346,10 +208,11 @@ function App() {
 
             <tbody>
               {portfolio.map((row, index) => {
-                const ticker = row.ticker.toUpperCase().trim();
-                const data = sampleMarketData[ticker];
-                const price = data ? data.price : 0;
-                const value = price * Number(row.shares || 0);
+                const matchingResult = results.find(
+                  (r) => r.ticker === row.ticker.toUpperCase().trim()
+                );
+                const price = matchingResult ? matchingResult.price : null;
+                const value = price ? price * Number(row.shares || 0) : null;
 
                 return (
                   <tr key={index}>
@@ -358,8 +221,7 @@ function App() {
                         value={row.ticker}
                         onChange={(e) => {
                           const copy = [...portfolio];
-                          copy[index].ticker =
-                            e.target.value.toUpperCase();
+                          copy[index].ticker = e.target.value.toUpperCase();
                           setPortfolio(copy);
                         }}
                       />
@@ -377,11 +239,8 @@ function App() {
                       />
                     </td>
 
-                    <td>{price ? currency(price) : "-"}</td>
-
-                    <td>
-                      <b>{price ? currency(value) : "-"}</b>
-                    </td>
+                    <td>{price ? currency(price) : "Run analysis"}</td>
+                    <td><b>{value ? currency(value) : "-"}</b></td>
                   </tr>
                 );
               })}
@@ -391,34 +250,18 @@ function App() {
               <tr>
                 <td></td>
                 <td></td>
-                <td>
-                  <b>Total Portfolio Value</b>
-                </td>
-                <td>
-                  <b>{currency(portfolioValue)}</b>
-                </td>
+                <td><b>Total Portfolio Value</b></td>
+                <td><b>{currency(portfolioValue)}</b></td>
               </tr>
             </tfoot>
           </table>
 
-          <button
-            onClick={() =>
-              setPortfolio([
-                ...portfolio,
-                { ticker: "", shares: 100 },
-              ])
-            }
-          >
+          <button onClick={() => setPortfolio([...portfolio, { ticker: "", shares: 100 }])}>
             Add Position
           </button>
 
-          <button
-            onClick={() => {
-              setRan(true);
-              setActivePage("resultsTable");
-            }}
-          >
-            Run Covered Call Analysis
+          <button onClick={runAnalysis} disabled={loading}>
+            {loading ? "Running..." : "Run Covered Call Analysis"}
           </button>
         </section>
       )}
@@ -428,9 +271,7 @@ function App() {
           {!ran ? (
             <div className="card">
               <h2>No table yet</h2>
-              <p>
-                Go to Portfolio and click Run Covered Call Analysis.
-              </p>
+              <p>Go to Portfolio and click Run Covered Call Analysis.</p>
             </div>
           ) : (
             <>
@@ -438,10 +279,8 @@ function App() {
 
               <div className="card">
                 <h2>Results Table</h2>
-
                 <p>
-                  Same recommendations as the card view, shown in a
-                  spreadsheet-style format.
+                  Same recommendations as the card view, shown in a spreadsheet-style format.
                 </p>
 
                 <table className="results-table">
@@ -450,45 +289,13 @@ function App() {
                       <th>Status</th>
                       <th>Ticker</th>
                       <th>Shares</th>
-                      <th>
-                        Stock
-                        <br />
-                        Price
-                      </th>
-                      <th>
-                        Strike
-                        <br />
-                        you are
-                        <br />
-                        selling
-                      </th>
+                      <th>Stock<br />Price</th>
+                      <th>Strike<br />you are<br />selling</th>
                       <th>Expiration</th>
-                      <th>
-                        Premium
-                        <br />
-                        you will
-                        <br />
-                        receive
-                      </th>
-                      <th>
-                        Cash
-                        <br />
-                        Income
-                      </th>
-                      <th>
-                        Return
-                        <br />
-                        from
-                        <br />
-                        Premium
-                      </th>
-                      <th>
-                        Minimum %
-                        <br />
-                        above
-                        <br />
-                        current price
-                      </th>
+                      <th>Premium<br />you will<br />receive</th>
+                      <th>Cash<br />Income</th>
+                      <th>Return<br />from<br />Premium</th>
+                      <th>Minimum %<br />above<br />current price</th>
                       <th>Risk</th>
                     </tr>
                   </thead>
@@ -502,60 +309,35 @@ function App() {
                               {r.category.toUpperCase()}
                             </span>
                           </td>
-
-                          <td>
-                            <b>{r.ticker}</b>
-                          </td>
-
+                          <td><b>{r.ticker}</b></td>
                           <td>{r.shares}</td>
-
                           <td>{currency(r.price)}</td>
-
-                          <td>
-                            <b>{currency(r.strike)}</b>
-                          </td>
-
+                          <td><b>{currency(r.strike)}</b></td>
                           <td>{r.expiration}</td>
-
                           <td>{currency(r.premium)}</td>
-
-                          <td>
-                            <b>{currency(r.income)}</b>
-                          </td>
-
-                          <td>{r.optionYield.toFixed(2)}%</td>
-
-                          <td>{r.upside.toFixed(2)}%</td>
-
-                          <td>
-                            <b>{r.risk}</b>
-                          </td>
+                          <td><b>{currency(r.income)}</b></td>
+                          <td>{Number(r.optionYield || 0).toFixed(2)}%</td>
+                          <td>{Number(r.upside || 0).toFixed(2)}%</td>
+                          <td><b>{r.risk}</b></td>
                         </tr>
 
                         <tr className={`table-detail-row ${r.category}`}>
                           <td></td>
-
                           <td colSpan="10">
                             <div className="table-detail-grid">
                               <div>
-                                <b>
-                                  {targetWeeksOut}-week trading range:
-                                </b>
-                                <br />
-                                {currency(r.rangeLow)} –{" "}
-                                {currency(r.rangeHigh)}
+                                <b>{targetWeeksOut}-week trading range:</b><br />
+                                {currency(r.rangeLow)} – {currency(r.rangeHigh)}
                               </div>
 
                               <div>
-                                <b>Earnings date:</b>
-                                <br />
-                                {r.earningsDate}
+                                <b>Earnings date:</b><br />
+                                {r.earningsDate || "Coming soon"}
                               </div>
 
                               <div>
-                                <b>Earnings check:</b>
-                                <br />
-                                {r.warning.text}
+                                <b>Earnings check:</b><br />
+                                {r.warning?.text || "Earnings check will be added next."}
                               </div>
                             </div>
                           </td>
@@ -566,14 +348,8 @@ function App() {
 
                   <tfoot>
                     <tr>
-                      <td colSpan="7">
-                        <b>Total Potential Earnings</b>
-                      </td>
-
-                      <td>
-                        <b>{currency(totalIncome)}</b>
-                      </td>
-
+                      <td colSpan="7"><b>Total Potential Earnings</b></td>
+                      <td><b>{currency(totalIncome)}</b></td>
                       <td colSpan="3"></td>
                     </tr>
                   </tfoot>
@@ -589,42 +365,25 @@ function App() {
           {!ran ? (
             <div className="card">
               <h2>No analysis run yet</h2>
-              <p>
-                Go to Portfolio and click Run Covered Call Analysis.
-              </p>
+              <p>Go to Portfolio and click Run Covered Call Analysis.</p>
             </div>
           ) : (
             <>
               <ResultsSummary />
 
-              <h2 className="section-title green-text">
-                Green — cleaner setups
-              </h2>
-
+              <h2 className="section-title green-text">Green — cleaner setups</h2>
               <div className="results-grid">
-                {green.map((r) => (
-                  <ResultCard key={r.ticker} r={r} />
-                ))}
+                {green.map((r) => <ResultCard key={r.ticker} r={r} />)}
               </div>
 
-              <h2 className="section-title yellow-text">
-                Yellow — near recent trading range
-              </h2>
-
+              <h2 className="section-title yellow-text">Yellow — near recent trading range</h2>
               <div className="results-grid">
-                {yellow.map((r) => (
-                  <ResultCard key={r.ticker} r={r} />
-                ))}
+                {yellow.map((r) => <ResultCard key={r.ticker} r={r} />)}
               </div>
 
-              <h2 className="section-title red-text">
-                Red — earnings risk
-              </h2>
-
+              <h2 className="section-title red-text">Red — earnings risk</h2>
               <div className="results-grid">
-                {red.map((r) => (
-                  <ResultCard key={r.ticker} r={r} />
-                ))}
+                {red.map((r) => <ResultCard key={r.ticker} r={r} />)}
               </div>
             </>
           )}
@@ -636,12 +395,9 @@ function App() {
           <h2>Analysis Settings</h2>
 
           <label>Target weeks out</label>
-
           <select
             value={targetWeeksOut}
-            onChange={(e) =>
-              setTargetWeeksOut(Number(e.target.value))
-            }
+            onChange={(e) => setTargetWeeksOut(Number(e.target.value))}
           >
             <option value={1}>1 week</option>
             <option value={2}>2 weeks</option>
@@ -650,12 +406,9 @@ function App() {
           </select>
 
           <label>Target strike above current stock price</label>
-
           <select
             value={targetPercentAbove}
-            onChange={(e) =>
-              setTargetPercentAbove(Number(e.target.value))
-            }
+            onChange={(e) => setTargetPercentAbove(Number(e.target.value))}
           >
             <option value={3}>3% above current price</option>
             <option value={4}>4% above current price</option>
@@ -667,8 +420,8 @@ function App() {
           </select>
 
           <div className="warning">
-            <b>Compliance note:</b> This should be presented as
-            educational software, not personalized financial advice.
+            <b>Compliance note:</b> This should be presented as educational
+            software, not personalized financial advice.
           </div>
         </section>
       )}
