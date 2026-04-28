@@ -30,16 +30,9 @@ function getEarningsWarning(earningsDate, expirationDate) {
   const expiration = new Date(expirationDate);
 
   if (earnings > today && earnings <= expiration) {
-    return {
-      color: "red",
-      text: "Earnings occur before expiration — consider waiting.",
-    };
+    return { color: "red", text: "Earnings before expiration — consider waiting." };
   }
-
-  return {
-    color: "green",
-    text: "No earnings risk detected.",
-  };
+  return { color: "green", text: "No earnings risk." };
 }
 
 function App() {
@@ -74,15 +67,13 @@ function App() {
         const strike = data.price * (1 + targetPercentAbove / 100);
         const premium = Math.max(0.35, data.price * 0.006);
 
-        const income = premium * 100 * Math.floor(p.shares / 100);
+        const contracts = Math.floor(p.shares / 100);
+        const income = premium * 100 * contracts;
         const optionYield = (premium / data.price) * 100;
         const upside = ((strike - data.price) / data.price) * 100;
-        const range = data.ranges[targetWeeksOut];
 
-        const warning = getEarningsWarning(
-          data.earningsDate,
-          expiration.toISOString()
-        );
+        const range = data.ranges[targetWeeksOut];
+        const warning = getEarningsWarning(data.earningsDate, expiration);
 
         let category = "green";
         if (warning.color === "red") category = "red";
@@ -106,14 +97,11 @@ function App() {
       .filter(Boolean);
   }, [portfolio, targetWeeksOut, targetPercentAbove]);
 
-  function ResultCard({ r }) {
-    const risk =
-      r.category === "green"
-        ? "Low"
-        : r.category === "yellow"
-        ? "Medium"
-        : "High";
+  const getRisk = (cat) =>
+    cat === "green" ? "Low" : cat === "yellow" ? "Medium" : "High";
 
+  // ---------- RESULT CARD ----------
+  function ResultCard({ r }) {
     return (
       <div className={`card result-card ${r.category}`}>
         <h2>{r.ticker}</h2>
@@ -127,7 +115,7 @@ function App() {
         <p>Estimated cash income: <b>{currency(r.income)}</b></p>
 
         <p>Return from premium: <b>{r.optionYield.toFixed(2)}%</b></p>
-        <p>Assignment risk score: <b>{risk}</b></p>
+        <p>Assignment risk score: <b>{getRisk(r.category)}</b></p>
 
         <div className="range-box">
           <b>{targetWeeksOut}-week range:</b><br />
@@ -143,12 +131,12 @@ function App() {
     );
   }
 
+  // ---------- LOGIN ----------
   if (!loggedIn) {
     return (
       <div className="page dark">
         <div className="hero">
           <div>
-            <div className="badge">Covered Call SaaS</div>
             <h1>YieldPilot</h1>
           </div>
           <div className="card">
@@ -159,13 +147,17 @@ function App() {
     );
   }
 
+  // ---------- MAIN ----------
   return (
     <div className="page">
       <nav className="tabs">
         <button onClick={() => setActivePage("portfolio")}>Portfolio</button>
-        <button onClick={() => setActivePage("results")}>Results</button>
+        <button onClick={() => setActivePage("resultsCards")}>Results Cards</button>
+        <button onClick={() => setActivePage("resultsTable")}>Results Table</button>
+        <button onClick={() => setActivePage("settings")}>Settings</button>
       </nav>
 
+      {/* ---------- PORTFOLIO ---------- */}
       {activePage === "portfolio" && (
         <section className="card">
           <h2>Portfolio</h2>
@@ -227,21 +219,80 @@ function App() {
           </table>
 
           <button onClick={() => setRan(true)}>Run Analysis</button>
-          <button onClick={() => setActivePage("results")}>View Results</button>
         </section>
       )}
 
-      {activePage === "results" && (
+      {/* ---------- RESULTS CARDS ---------- */}
+      {activePage === "resultsCards" && (
         <section>
-          {!ran ? (
-            <div className="card">Run analysis first</div>
-          ) : (
+          {!ran ? <div className="card">Run analysis first</div> :
             <div className="results-grid">
-              {results.map((r) => (
-                <ResultCard key={r.ticker} r={r} />
-              ))}
-            </div>
+              {results.map(r => <ResultCard key={r.ticker} r={r} />)}
+            </div>}
+        </section>
+      )}
+
+      {/* ---------- RESULTS TABLE ---------- */}
+      {activePage === "resultsTable" && (
+        <section className="card">
+          {!ran ? (
+            <div>Run analysis first</div>
+          ) : (
+            <table className="results-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Shares</th>
+                  <th>Stock Price</th>
+                  <th>Strike you are selling</th>
+                  <th>Premium you will receive</th>
+                  <th>Cash Income</th>
+                  <th>Return</th>
+                  <th>Minimum % above current price</th>
+                  <th>Risk</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {results.map((r) => (
+                  <tr key={r.ticker} className={r.category}>
+                    <td>{r.ticker}</td>
+                    <td>{r.shares}</td>
+                    <td>{currency(r.price)}</td>
+                    <td>{currency(r.strike)}</td>
+                    <td>{currency(r.premium)}</td>
+                    <td>{currency(r.income)}</td>
+                    <td>{r.optionYield.toFixed(2)}%</td>
+                    <td>{r.upside.toFixed(2)}%</td>
+                    <td>{getRisk(r.category)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
+        </section>
+      )}
+
+      {/* ---------- SETTINGS ---------- */}
+      {activePage === "settings" && (
+        <section className="card">
+          <h2>Settings</h2>
+
+          <label>Weeks Out</label>
+          <select value={targetWeeksOut} onChange={(e) => setTargetWeeksOut(Number(e.target.value))}>
+            <option value={1}>1 week</option>
+            <option value={2}>2 weeks</option>
+            <option value={3}>3 weeks</option>
+            <option value={4}>4 weeks</option>
+          </select>
+
+          <label>% Above Current Price</label>
+          <select value={targetPercentAbove} onChange={(e) => setTargetPercentAbove(Number(e.target.value))}>
+            <option value={3}>3%</option>
+            <option value={5}>5%</option>
+            <option value={7}>7%</option>
+            <option value={10}>10%</option>
+          </select>
         </section>
       )}
     </div>
