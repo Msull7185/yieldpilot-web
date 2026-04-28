@@ -32,12 +32,14 @@ function getEarningsWarning(earningsDate, expirationDate) {
   if (earnings > today && earnings <= expiration) {
     return {
       color: "red",
-      text: "⚠️ Earnings occur before this option expires. Consider waiting until after earnings.",
+      label: "Earnings Risk",
+      text: "Earnings occur before this option expires. Consider waiting until after earnings.",
     };
   }
 
   return {
     color: "green",
+    label: "Clear",
     text: "No earnings warning based on current demo data.",
   };
 }
@@ -92,8 +94,14 @@ function App() {
         const warning = getEarningsWarning(data.earningsDate, expirationText);
 
         let category = "green";
-        if (warning.color === "red") category = "red";
-        else if (strike < range[1]) category = "yellow";
+        let categoryLabel = "Green";
+        if (warning.color === "red") {
+          category = "red";
+          categoryLabel = "Red";
+        } else if (strike < range[1]) {
+          category = "yellow";
+          categoryLabel = "Yellow";
+        }
 
         return {
           ticker,
@@ -111,6 +119,7 @@ function App() {
           rangeHigh: range[1],
           warning,
           category,
+          categoryLabel,
         };
       })
       .filter(Boolean);
@@ -146,6 +155,29 @@ function App() {
           <b>Earnings check:</b><br />
           Earnings date: {r.earningsDate}<br />
           {r.warning.text}
+        </div>
+      </div>
+    );
+  }
+
+  function ResultsSummary() {
+    return (
+      <div className="summary-grid">
+        <div className="summary-card">
+          <span>Total potential earnings</span>
+          <b>{currency(totalIncome)}</b>
+        </div>
+        <div className="summary-card green">
+          <span>Green earnings</span>
+          <b>{currency(greenIncome)}</b>
+        </div>
+        <div className="summary-card yellow">
+          <span>Yellow earnings</span>
+          <b>{currency(yellowIncome)}</b>
+        </div>
+        <div className="summary-card red">
+          <span>Red earnings</span>
+          <b>{currency(redIncome)}</b>
         </div>
       </div>
     );
@@ -189,7 +221,8 @@ function App() {
 
       <nav className="tabs">
         <button onClick={() => setActivePage("portfolio")}>Portfolio</button>
-        <button onClick={() => setActivePage("results")}>Results</button>
+        <button onClick={() => setActivePage("results")}>Results Cards</button>
+        <button onClick={() => setActivePage("resultsTable")}>Results Table</button>
         <button onClick={() => setActivePage("settings")}>Settings</button>
       </nav>
 
@@ -241,7 +274,6 @@ function App() {
                     </td>
 
                     <td>{price ? currency(price) : "-"}</td>
-
                     <td><b>{price ? currency(value) : "-"}</b></td>
                   </tr>
                 );
@@ -282,24 +314,7 @@ function App() {
             </div>
           ) : (
             <>
-              <div className="summary-grid">
-                <div className="summary-card">
-                  <span>Total potential earnings</span>
-                  <b>{currency(totalIncome)}</b>
-                </div>
-                <div className="summary-card green">
-                  <span>Green earnings</span>
-                  <b>{currency(greenIncome)}</b>
-                </div>
-                <div className="summary-card yellow">
-                  <span>Yellow earnings</span>
-                  <b>{currency(yellowIncome)}</b>
-                </div>
-                <div className="summary-card red">
-                  <span>Red earnings</span>
-                  <b>{currency(redIncome)}</b>
-                </div>
-              </div>
+              <ResultsSummary />
 
               <h2 className="section-title green-text">Green — cleaner setups</h2>
               <div className="results-grid">
@@ -314,6 +329,99 @@ function App() {
               <h2 className="section-title red-text">Red — earnings risk</h2>
               <div className="results-grid">
                 {red.map((r) => <ResultCard key={r.ticker} r={r} />)}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {activePage === "resultsTable" && (
+        <section>
+          {!ran ? (
+            <div className="card">
+              <h2>No table yet</h2>
+              <p>Go to Portfolio and click Run Covered Call Analysis.</p>
+            </div>
+          ) : (
+            <>
+              <ResultsSummary />
+
+              <div className="card">
+                <h2>Results Table</h2>
+                <p>
+                  Same recommendations as the card view, shown in a spreadsheet-style format.
+                  Each stock has a main row plus an earnings/range detail row underneath it.
+                </p>
+
+                <table className="results-table">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Ticker</th>
+                      <th>Shares</th>
+                      <th>Stock Price</th>
+                      <th>Strike</th>
+                      <th>Expiration</th>
+                      <th>Premium</th>
+                      <th>Cash Income</th>
+                      <th>Yield</th>
+                      <th>Upside</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {results.map((r) => (
+                      <React.Fragment key={r.ticker}>
+                        <tr className={`table-main-row ${r.category}`}>
+                          <td>
+                            <span className={`status-pill ${r.category}`}>
+                              {r.categoryLabel}
+                            </span>
+                          </td>
+                          <td><b>{r.ticker}</b></td>
+                          <td>{r.shares}</td>
+                          <td>{currency(r.price)}</td>
+                          <td><b>{currency(r.strike)}</b></td>
+                          <td>{r.expiration}</td>
+                          <td>{currency(r.premium)}</td>
+                          <td><b>{currency(r.income)}</b></td>
+                          <td>{r.optionYield.toFixed(2)}%</td>
+                          <td>{r.upside.toFixed(2)}%</td>
+                        </tr>
+
+                        <tr className={`table-detail-row ${r.category}`}>
+                          <td></td>
+                          <td colSpan="9">
+                            <div className="table-detail-grid">
+                              <div>
+                                <b>{targetWeeksOut}-week trading range:</b><br />
+                                {currency(r.rangeLow)} – {currency(r.rangeHigh)}
+                              </div>
+
+                              <div>
+                                <b>Earnings date:</b><br />
+                                {r.earningsDate}
+                              </div>
+
+                              <div>
+                                <b>Earnings check:</b><br />
+                                {r.warning.text}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+
+                  <tfoot>
+                    <tr>
+                      <td colSpan="7"><b>Total Potential Earnings</b></td>
+                      <td><b>{currency(totalIncome)}</b></td>
+                      <td colSpan="2"></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </>
           )}
