@@ -49,6 +49,14 @@ select {
   max-width: 650px;
 }
 
+.hero-list {
+  margin-top: 28px;
+  display: grid;
+  gap: 12px;
+  color: #cbd5e1;
+  font-size: 17px;
+}
+
 .badge {
   display: inline-block;
   background: #1e293b;
@@ -83,6 +91,10 @@ select {
   line-height: 1.45;
 }
 
+.small-note {
+  font-size: 12px;
+}
+
 input,
 select {
   width: 100%;
@@ -91,6 +103,10 @@ select {
   border-radius: 14px;
   background: white;
   color: #0f172a;
+}
+
+.login-card input {
+  margin-bottom: 16px;
 }
 
 button {
@@ -170,22 +186,30 @@ section {
 
 .portfolio-table th,
 .results-table th {
-  text-align: left;
-  padding: 10px 14px;
+  text-align: center;
+  padding: 10px 8px;
   color: #475569;
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  vertical-align: bottom;
+  white-space: normal;
+}
+
+.portfolio-table th {
+  text-align: left;
+  font-size: 14px;
 }
 
 .portfolio-table td,
 .results-table td {
   background: #f8fafc;
-  padding: 14px;
+  padding: 12px 10px;
   border-top: 1px solid #e2e8f0;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
+  font-size: 14px;
 }
 
 .portfolio-table td:first-child,
@@ -216,10 +240,6 @@ section {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 22px;
-}
-
-.result-card {
-  border-top: 6px solid #0f172a;
 }
 
 .result-card.green {
@@ -375,22 +395,6 @@ label {
   border-bottom-color: #fecaca;
 }
 
-.table-detail-row td:first-child {
-  border-left: 2px solid transparent;
-}
-
-.table-detail-row.green td:first-child {
-  border-left-color: #16a34a;
-}
-
-.table-detail-row.yellow td:first-child {
-  border-left-color: #eab308;
-}
-
-.table-detail-row.red td:first-child {
-  border-left-color: #dc2626;
-}
-
 .table-detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 2fr;
@@ -404,10 +408,10 @@ label {
 
 .status-pill {
   display: inline-block;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 999px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .status-pill.green {
