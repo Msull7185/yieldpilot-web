@@ -55,6 +55,15 @@ function App() {
     { ticker: "NVDA", shares: 100 },
   ]);
 
+  const portfolioValue = useMemo(() => {
+    return portfolio.reduce((sum, row) => {
+      const ticker = row.ticker.toUpperCase().trim();
+      const data = sampleMarketData[ticker];
+      if (!data) return sum;
+      return sum + data.price * Number(row.shares || 0);
+    }, 0);
+  }, [portfolio]);
+
   const results = useMemo(() => {
     return portfolio
       .map((p) => {
@@ -116,6 +125,36 @@ function App() {
   const yellowIncome = yellow.reduce((sum, r) => sum + r.income, 0);
   const redIncome = red.reduce((sum, r) => sum + r.income, 0);
 
+  function ResultCard({ r }) {
+    return (
+      <div className={`card result-card ${r.category}`}>
+        <h2>{r.ticker}</h2>
+        <p>Current stock price: <b>{currency(r.price)}</b></p>
+        <p>Suggested strike: <b>{currency(r.strike)}</b></p>
+        <p>Target above current price: <b>{r.upside.toFixed(2)}%</b></p>
+        <p>Expiration: <b>{r.expiration}</b></p>
+        <p>Premium estimate: <b>{currency(r.premium)}</b></p>
+        <p>Estimated cash income: <b>{currency(r.income)}</b></p>
+        <p>Option yield: <b>{r.optionYield.toFixed(2)}%</b></p>
+
+        <div className="range-box">
+          <b>{targetWeeksOut}-week trading range:</b><br />
+          {currency(r.rangeLow)} – {currency(r.rangeHigh)}
+          <br />
+          <small>
+            This compares the proposed strike to the stock’s recent trading range.
+          </small>
+        </div>
+
+        <div className={`warning ${r.warning.color}`}>
+          <b>Earnings check:</b><br />
+          Earnings date: {r.earningsDate}<br />
+          {r.warning.text}
+        </div>
+      </div>
+    );
+  }
+
   if (!loggedIn) {
     return (
       <div className="page dark">
@@ -135,36 +174,6 @@ function App() {
             <input value="password123" type="password" readOnly />
             <button onClick={() => setLoggedIn(true)}>Open Dashboard</button>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  function ResultCard({ r }) {
-    return (
-      <div className={`card result-card ${r.category}`} key={r.ticker}>
-        <h2>{r.ticker}</h2>
-        <p>Current stock price: <b>{currency(r.price)}</b></p>
-        <p>Suggested strike: <b>{currency(r.strike)}</b></p>
-        <p>Target above current price: <b>{r.upside.toFixed(2)}%</b></p>
-        <p>Expiration: <b>{r.expiration}</b></p>
-        <p>Premium estimate: <b>{currency(r.premium)}</b></p>
-        <p>Estimated cash income: <b>{currency(r.income)}</b></p>
-        <p>Option yield: <b>{r.optionYield.toFixed(2)}%</b></p>
-
-        <div className="range-box">
-          <b>{targetWeeksOut}-week trading range:</b><br />
-          {currency(r.rangeLow)} – {currency(r.rangeHigh)}
-          <br />
-          <small>
-            This helps compare the proposed strike to the stock’s recent trading range.
-          </small>
-        </div>
-
-        <div className={`warning ${r.warning.color}`}>
-          <b>Earnings check:</b><br />
-          Earnings date: {r.earningsDate}<br />
-          {r.warning.text}
         </div>
       </div>
     );
@@ -193,27 +202,57 @@ function App() {
           <h2>Saved Portfolio</h2>
           <p>Enter ticker symbols and shares.</p>
 
-          {portfolio.map((row, index) => (
-            <div className="portfolio-row" key={index}>
-              <input
-                value={row.ticker}
-                onChange={(e) => {
-                  const copy = [...portfolio];
-                  copy[index].ticker = e.target.value.toUpperCase();
-                  setPortfolio(copy);
-                }}
-              />
-              <input
-                type="number"
-                value={row.shares}
-                onChange={(e) => {
-                  const copy = [...portfolio];
-                  copy[index].shares = Number(e.target.value);
-                  setPortfolio(copy);
-                }}
-              />
-            </div>
-          ))}
+          <div className="portfolio-header">
+            <div>Ticker</div>
+            <div>Shares</div>
+            <div>Current Price</div>
+            <div>Value</div>
+          </div>
+
+          {portfolio.map((row, index) => {
+            const ticker = row.ticker.toUpperCase().trim();
+            const data = sampleMarketData[ticker];
+            const price = data ? data.price : 0;
+            const value = price * Number(row.shares || 0);
+
+            return (
+              <div className="portfolio-row" key={index}>
+                <input
+                  value={row.ticker}
+                  onChange={(e) => {
+                    const copy = [...portfolio];
+                    copy[index].ticker = e.target.value.toUpperCase();
+                    setPortfolio(copy);
+                  }}
+                />
+
+                <input
+                  type="number"
+                  value={row.shares}
+                  onChange={(e) => {
+                    const copy = [...portfolio];
+                    copy[index].shares = Number(e.target.value);
+                    setPortfolio(copy);
+                  }}
+                />
+
+                <div className="portfolio-cell">
+                  {price ? currency(price) : "-"}
+                </div>
+
+                <div className="portfolio-cell bold">
+                  {price ? currency(value) : "-"}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="portfolio-total">
+            <div></div>
+            <div></div>
+            <div><b>Total Portfolio Value</b></div>
+            <div><b>{currency(portfolioValue)}</b></div>
+          </div>
 
           <button onClick={() => setPortfolio([...portfolio, { ticker: "", shares: 100 }])}>
             Add Position
@@ -259,13 +298,19 @@ function App() {
               </div>
 
               <h2 className="section-title green-text">Green — cleaner setups</h2>
-              <div className="results-grid">{green.map((r) => <ResultCard key={r.ticker} r={r} />)}</div>
+              <div className="results-grid">
+                {green.map((r) => <ResultCard key={r.ticker} r={r} />)}
+              </div>
 
               <h2 className="section-title yellow-text">Yellow — near recent trading range</h2>
-              <div className="results-grid">{yellow.map((r) => <ResultCard key={r.ticker} r={r} />)}</div>
+              <div className="results-grid">
+                {yellow.map((r) => <ResultCard key={r.ticker} r={r} />)}
+              </div>
 
               <h2 className="section-title red-text">Red — earnings risk</h2>
-              <div className="results-grid">{red.map((r) => <ResultCard key={r.ticker} r={r} />)}</div>
+              <div className="results-grid">
+                {red.map((r) => <ResultCard key={r.ticker} r={r} />)}
+              </div>
             </>
           )}
         </section>
