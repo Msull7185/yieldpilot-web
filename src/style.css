@@ -159,15 +159,45 @@ section {
   margin: 0 auto;
 }
 
+.portfolio-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 14px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  padding: 0 6px;
+  color: #475569;
+}
+
 .portfolio-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 14px;
+  align-items: center;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
   padding: 14px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+}
+
+.portfolio-cell {
+  display: flex;
+  align-items: center;
+}
+
+.portfolio-cell.bold {
+  font-weight: 700;
+}
+
+.portfolio-total {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 12px;
+  border-top: 2px solid #cbd5e1;
+  font-size: 18px;
 }
 
 .results-grid {
@@ -180,6 +210,18 @@ section {
   border-top: 6px solid #0f172a;
 }
 
+.result-card.green {
+  border-top: 6px solid #16a34a;
+}
+
+.result-card.yellow {
+  border-top: 6px solid #eab308;
+}
+
+.result-card.red {
+  border-top: 6px solid #dc2626;
+}
+
 .result-card h2 {
   font-size: 32px;
   margin-bottom: 12px;
@@ -189,45 +231,6 @@ section {
   margin: 8px 0;
 }
 
-.warning {
-  margin-top: 18px;
-  padding: 16px;
-  border-radius: 18px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
-  line-height: 1.45;
-}
-
-label {
-  display: block;
-  font-weight: 800;
-  margin-top: 18px;
-  margin-bottom: 6px;
-}
-
-@media (max-width: 900px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
-
-  .hero h1 {
-    font-size: 48px;
-  }
-
-  .results-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .portfolio-row {
-    grid-template-columns: 1fr;
-  }
-}
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -266,18 +269,6 @@ label {
   border-top: 6px solid #dc2626;
 }
 
-.result-card.green {
-  border-top: 6px solid #16a34a;
-}
-
-.result-card.yellow {
-  border-top: 6px solid #eab308;
-}
-
-.result-card.red {
-  border-top: 6px solid #dc2626;
-}
-
 .range-box {
   margin-top: 18px;
   padding: 16px;
@@ -285,6 +276,16 @@ label {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #1e3a8a;
+  line-height: 1.45;
+}
+
+.warning {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
   line-height: 1.45;
 }
 
@@ -318,8 +319,38 @@ label {
   color: #991b1b;
 }
 
+label {
+  display: block;
+  font-weight: 800;
+  margin-top: 18px;
+  margin-bottom: 6px;
+}
+
 @media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero h1 {
+    font-size: 48px;
+  }
+
+  .results-grid,
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .portfolio-header {
+    display: none;
+  }
+
+  .portfolio-row,
+  .portfolio-total {
     grid-template-columns: 1fr;
   }
 }
