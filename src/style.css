@@ -87,7 +87,6 @@ input,
 select {
   width: 100%;
   padding: 13px 14px;
-  margin: 8px 0 16px;
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   background: white;
@@ -159,45 +158,55 @@ section {
   margin: 0 auto;
 }
 
-.portfolio-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 14px;
-  font-weight: 800;
-  margin-bottom: 10px;
-  padding: 0 6px;
+.portfolio-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.portfolio-table th {
+  text-align: left;
+  padding: 10px 14px;
   color: #475569;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.portfolio-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 14px;
-  align-items: center;
+.portfolio-table td {
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
   padding: 14px;
-  margin-bottom: 10px;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
 }
 
-.portfolio-cell {
-  display: flex;
-  align-items: center;
+.portfolio-table td:first-child {
+  border-left: 1px solid #e2e8f0;
+  border-radius: 18px 0 0 18px;
 }
 
-.portfolio-cell.bold {
-  font-weight: 700;
+.portfolio-table td:last-child {
+  border-right: 1px solid #e2e8f0;
+  border-radius: 0 18px 18px 0;
 }
 
-.portfolio-total {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 14px;
-  margin-top: 12px;
-  padding: 12px;
+.portfolio-table input {
+  margin: 0;
+}
+
+.portfolio-table tfoot td {
+  background: white;
   border-top: 2px solid #cbd5e1;
+  border-bottom: none;
   font-size: 18px;
+}
+
+.portfolio-table tfoot td:first-child,
+.portfolio-table tfoot td:last-child {
+  border-radius: 0;
 }
 
 .results-grid {
@@ -345,12 +354,8 @@ label {
     align-items: flex-start;
   }
 
-  .portfolio-header {
-    display: none;
-  }
-
-  .portfolio-row,
-  .portfolio-total {
-    grid-template-columns: 1fr;
+  .portfolio-table {
+    display: block;
+    overflow-x: auto;
   }
 }
