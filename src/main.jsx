@@ -140,10 +140,6 @@ function App() {
         <div className="range-box">
           <b>{targetWeeksOut}-week trading range:</b><br />
           {currency(r.rangeLow)} – {currency(r.rangeHigh)}
-          <br />
-          <small>
-            This compares the proposed strike to the stock’s recent trading range.
-          </small>
         </div>
 
         <div className={`warning ${r.warning.color}`}>
@@ -202,57 +198,65 @@ function App() {
           <h2>Saved Portfolio</h2>
           <p>Enter ticker symbols and shares.</p>
 
-          <div className="portfolio-header">
-            <div>Ticker</div>
-            <div>Shares</div>
-            <div>Current Price</div>
-            <div>Value</div>
-          </div>
+          <table className="portfolio-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Shares</th>
+                <th>Share Price</th>
+                <th>Value</th>
+              </tr>
+            </thead>
 
-          {portfolio.map((row, index) => {
-            const ticker = row.ticker.toUpperCase().trim();
-            const data = sampleMarketData[ticker];
-            const price = data ? data.price : 0;
-            const value = price * Number(row.shares || 0);
+            <tbody>
+              {portfolio.map((row, index) => {
+                const ticker = row.ticker.toUpperCase().trim();
+                const data = sampleMarketData[ticker];
+                const price = data ? data.price : 0;
+                const value = price * Number(row.shares || 0);
 
-            return (
-              <div className="portfolio-row" key={index}>
-                <input
-                  value={row.ticker}
-                  onChange={(e) => {
-                    const copy = [...portfolio];
-                    copy[index].ticker = e.target.value.toUpperCase();
-                    setPortfolio(copy);
-                  }}
-                />
+                return (
+                  <tr key={index}>
+                    <td>
+                      <input
+                        value={row.ticker}
+                        onChange={(e) => {
+                          const copy = [...portfolio];
+                          copy[index].ticker = e.target.value.toUpperCase();
+                          setPortfolio(copy);
+                        }}
+                      />
+                    </td>
 
-                <input
-                  type="number"
-                  value={row.shares}
-                  onChange={(e) => {
-                    const copy = [...portfolio];
-                    copy[index].shares = Number(e.target.value);
-                    setPortfolio(copy);
-                  }}
-                />
+                    <td>
+                      <input
+                        type="number"
+                        value={row.shares}
+                        onChange={(e) => {
+                          const copy = [...portfolio];
+                          copy[index].shares = Number(e.target.value);
+                          setPortfolio(copy);
+                        }}
+                      />
+                    </td>
 
-                <div className="portfolio-cell">
-                  {price ? currency(price) : "-"}
-                </div>
+                    <td>{price ? currency(price) : "-"}</td>
 
-                <div className="portfolio-cell bold">
-                  {price ? currency(value) : "-"}
-                </div>
-              </div>
-            );
-          })}
+                    <td><b>{price ? currency(value) : "-"}</b></td>
+                  </tr>
+                );
+              })}
+            </tbody>
 
-          <div className="portfolio-total">
-            <div></div>
-            <div></div>
-            <div><b>Total Portfolio Value</b></div>
-            <div><b>{currency(portfolioValue)}</b></div>
-          </div>
+            <tfoot>
+              <tr>
+                <td></td>
+                <td></td>
+                <td><b>Total Portfolio Value</b></td>
+                <td><b>{currency(portfolioValue)}</b></td>
+              </tr>
+            </tfoot>
+          </table>
 
           <button onClick={() => setPortfolio([...portfolio, { ticker: "", shares: 100 }])}>
             Add Position
