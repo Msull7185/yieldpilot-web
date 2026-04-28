@@ -230,8 +230,8 @@ function App() {
 
       <nav className="tabs">
         <button onClick={() => setActivePage("portfolio")}>Portfolio</button>
-        <button onClick={() => setActivePage("resultsCards")}>Results Cards</button>
         <button onClick={() => setActivePage("resultsTable")}>Results Table</button>
+        <button onClick={() => setActivePage("resultsCards")}>Results Cards</button>
         <button onClick={() => setActivePage("settings")}>Settings</button>
       </nav>
 
@@ -314,7 +314,7 @@ function App() {
         </section>
       )}
 
-      {activePage === "resultsCards" && (
+      {activePage === "resultsTable" && (
         <section>
           {!ran ? (
             <div className="card">
@@ -344,7 +344,7 @@ function App() {
         </section>
       )}
 
-      {activePage === "resultsTable" && (
+      {activePage === "resultsCards" && (
         <section>
           {!ran ? (
             <div className="card">
