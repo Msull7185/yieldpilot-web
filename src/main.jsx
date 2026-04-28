@@ -6,32 +6,17 @@ const sampleMarketData = {
   AAPL: {
     price: 173.42,
     earningsDate: "2026-05-07",
-    options: [
-      { weeksOut: 1, expiration: "2026-05-08", strike: 180, premium: 1.42 },
-      { weeksOut: 2, expiration: "2026-05-15", strike: 185, premium: 1.03 },
-      { weeksOut: 3, expiration: "2026-05-22", strike: 190, premium: 0.82 },
-      { weeksOut: 4, expiration: "2026-05-29", strike: 195, premium: 0.61 },
-    ],
+    ranges: { 1: [169, 179], 2: [166, 181], 3: [164, 184], 4: [160, 187] },
   },
   MSFT: {
     price: 421.18,
     earningsDate: "2026-04-30",
-    options: [
-      { weeksOut: 1, expiration: "2026-05-08", strike: 430, premium: 4.1 },
-      { weeksOut: 2, expiration: "2026-05-15", strike: 435, premium: 3.25 },
-      { weeksOut: 3, expiration: "2026-05-22", strike: 440, premium: 2.72 },
-      { weeksOut: 4, expiration: "2026-05-29", strike: 450, premium: 2.18 },
-    ],
+    ranges: { 1: [412, 432], 2: [405, 438], 3: [398, 445], 4: [392, 451] },
   },
   NVDA: {
     price: 907.66,
     earningsDate: "2026-05-20",
-    options: [
-      { weeksOut: 1, expiration: "2026-05-08", strike: 950, premium: 16.4 },
-      { weeksOut: 2, expiration: "2026-05-15", strike: 960, premium: 13.8 },
-      { weeksOut: 3, expiration: "2026-05-22", strike: 980, premium: 11.25 },
-      { weeksOut: 4, expiration: "2026-05-29", strike: 1000, premium: 9.6 },
-    ],
+    ranges: { 1: [880, 945], 2: [860, 965], 3: [835, 990], 4: [810, 1020] },
   },
 };
 
@@ -45,17 +30,23 @@ function getEarningsWarning(earningsDate, expirationDate) {
   const expiration = new Date(expirationDate);
 
   if (earnings > today && earnings <= expiration) {
-    return "⚠️ Earnings occur before this option expires. Consider waiting until after earnings.";
+    return {
+      color: "red",
+      text: "⚠️ Earnings occur before this option expires. Consider waiting until after earnings.",
+    };
   }
 
-  return "No earnings warning based on current demo data.";
+  return {
+    color: "green",
+    text: "No earnings warning based on current demo data.",
+  };
 }
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [activePage, setActivePage] = useState("portfolio");
   const [targetWeeksOut, setTargetWeeksOut] = useState(2);
-  const [minPremium, setMinPremium] = useState(0.75);
+  const [targetPercentAbove, setTargetPercentAbove] = useState(5);
   const [ran, setRan] = useState(false);
 
   const [portfolio, setPortfolio] = useState([
@@ -71,32 +62,59 @@ function App() {
         const data = sampleMarketData[ticker];
         if (!data || p.shares < 100) return null;
 
-        const option =
-          data.options.find((o) => o.weeksOut === targetWeeksOut) ||
-          data.options[0];
+        const expiration = new Date();
+        expiration.setDate(expiration.getDate() + targetWeeksOut * 7);
+        const expirationText = expiration.toISOString().slice(0, 10);
+
+        const strike = Number(
+          (data.price * (1 + targetPercentAbove / 100)).toFixed(2)
+        );
+
+        const premium = Number(
+          Math.max(0.35, data.price * 0.006 * (targetWeeksOut / 2)).toFixed(2)
+        );
 
         const contracts = Math.floor(p.shares / 100);
-        const income = option.premium * 100 * contracts;
-        const optionYield = (option.premium / data.price) * 100;
-        const upside = ((option.strike - data.price) / data.price) * 100;
-        const warning = getEarningsWarning(data.earningsDate, option.expiration);
+        const income = premium * 100 * contracts;
+        const optionYield = (premium / data.price) * 100;
+        const upside = ((strike - data.price) / data.price) * 100;
+        const range = data.ranges[targetWeeksOut] || data.ranges[2];
+
+        const warning = getEarningsWarning(data.earningsDate, expirationText);
+
+        let category = "green";
+        if (warning.color === "red") category = "red";
+        else if (strike < range[1]) category = "yellow";
 
         return {
           ticker,
           shares: p.shares,
           price: data.price,
           earningsDate: data.earningsDate,
-          option,
+          expiration: expirationText,
+          strike,
+          premium,
           contracts,
           income,
           optionYield,
           upside,
+          rangeLow: range[0],
+          rangeHigh: range[1],
           warning,
+          category,
         };
       })
-      .filter(Boolean)
-      .filter((r) => r.option.premium >= minPremium);
-  }, [portfolio, targetWeeksOut, minPremium]);
+      .filter(Boolean);
+  }, [portfolio, targetWeeksOut, targetPercentAbove]);
+
+  const green = results.filter((r) => r.category === "green");
+  const yellow = results.filter((r) => r.category === "yellow");
+  const red = results.filter((r) => r.category === "red");
+
+  const totalIncome = results.reduce((sum, r) => sum + r.income, 0);
+  const greenIncome = green.reduce((sum, r) => sum + r.income, 0);
+  const yellowIncome = yellow.reduce((sum, r) => sum + r.income, 0);
+  const redIncome = red.reduce((sum, r) => sum + r.income, 0);
 
   if (!loggedIn) {
     return (
@@ -117,6 +135,36 @@ function App() {
             <input value="password123" type="password" readOnly />
             <button onClick={() => setLoggedIn(true)}>Open Dashboard</button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  function ResultCard({ r }) {
+    return (
+      <div className={`card result-card ${r.category}`} key={r.ticker}>
+        <h2>{r.ticker}</h2>
+        <p>Current stock price: <b>{currency(r.price)}</b></p>
+        <p>Suggested strike: <b>{currency(r.strike)}</b></p>
+        <p>Target above current price: <b>{r.upside.toFixed(2)}%</b></p>
+        <p>Expiration: <b>{r.expiration}</b></p>
+        <p>Premium estimate: <b>{currency(r.premium)}</b></p>
+        <p>Estimated cash income: <b>{currency(r.income)}</b></p>
+        <p>Option yield: <b>{r.optionYield.toFixed(2)}%</b></p>
+
+        <div className="range-box">
+          <b>{targetWeeksOut}-week trading range:</b><br />
+          {currency(r.rangeLow)} – {currency(r.rangeHigh)}
+          <br />
+          <small>
+            This helps compare the proposed strike to the stock’s recent trading range.
+          </small>
+        </div>
+
+        <div className={`warning ${r.warning.color}`}>
+          <b>Earnings check:</b><br />
+          Earnings date: {r.earningsDate}<br />
+          {r.warning.text}
         </div>
       </div>
     );
@@ -167,11 +215,7 @@ function App() {
             </div>
           ))}
 
-          <button
-            onClick={() =>
-              setPortfolio([...portfolio, { ticker: "", shares: 100 }])
-            }
-          >
+          <button onClick={() => setPortfolio([...portfolio, { ticker: "", shares: 100 }])}>
             Add Position
           </button>
 
@@ -194,28 +238,35 @@ function App() {
               <p>Go to Portfolio and click Run Covered Call Analysis.</p>
             </div>
           ) : (
-            <div className="results-grid">
-              {results.map((r) => (
-                <div className="card result-card" key={r.ticker}>
-                  <h2>{r.ticker}</h2>
-                  <p>Current stock price: <b>{currency(r.price)}</b></p>
-                  <p>Suggested strike: <b>{currency(r.option.strike)}</b></p>
-                  <p>Expiration: <b>{r.option.expiration}</b></p>
-                  <p>Premium: <b>{currency(r.option.premium)}</b></p>
-                  <p>Estimated cash income: <b>{currency(r.income)}</b></p>
-                  <p>Option yield: <b>{r.optionYield.toFixed(2)}%</b></p>
-                  <p>Upside to strike: <b>{r.upside.toFixed(2)}%</b></p>
-
-                  <div className="warning">
-                    <b>Earnings check:</b>
-                    <br />
-                    Earnings date: {r.earningsDate}
-                    <br />
-                    {r.warning}
-                  </div>
+            <>
+              <div className="summary-grid">
+                <div className="summary-card">
+                  <span>Total potential earnings</span>
+                  <b>{currency(totalIncome)}</b>
                 </div>
-              ))}
-            </div>
+                <div className="summary-card green">
+                  <span>Green earnings</span>
+                  <b>{currency(greenIncome)}</b>
+                </div>
+                <div className="summary-card yellow">
+                  <span>Yellow earnings</span>
+                  <b>{currency(yellowIncome)}</b>
+                </div>
+                <div className="summary-card red">
+                  <span>Red earnings</span>
+                  <b>{currency(redIncome)}</b>
+                </div>
+              </div>
+
+              <h2 className="section-title green-text">Green — cleaner setups</h2>
+              <div className="results-grid">{green.map((r) => <ResultCard key={r.ticker} r={r} />)}</div>
+
+              <h2 className="section-title yellow-text">Yellow — near recent trading range</h2>
+              <div className="results-grid">{yellow.map((r) => <ResultCard key={r.ticker} r={r} />)}</div>
+
+              <h2 className="section-title red-text">Red — earnings risk</h2>
+              <div className="results-grid">{red.map((r) => <ResultCard key={r.ticker} r={r} />)}</div>
+            </>
           )}
         </section>
       )}
@@ -235,17 +286,18 @@ function App() {
             <option value={4}>4 weeks</option>
           </select>
 
-          <label>Minimum premium</label>
+          <label>Target strike above current stock price</label>
           <select
-            value={minPremium}
-            onChange={(e) => setMinPremium(Number(e.target.value))}
+            value={targetPercentAbove}
+            onChange={(e) => setTargetPercentAbove(Number(e.target.value))}
           >
-            <option value={0}>Any premium</option>
-            <option value={0.5}>$0.50+</option>
-            <option value={0.75}>$0.75+</option>
-            <option value={1}>$1.00+</option>
-            <option value={2}>$2.00+</option>
-            <option value={5}>$5.00+</option>
+            <option value={3}>3% above current price</option>
+            <option value={4}>4% above current price</option>
+            <option value={5}>5% above current price</option>
+            <option value={6}>6% above current price</option>
+            <option value={7}>7% above current price</option>
+            <option value={8}>8% above current price</option>
+            <option value={10}>10% above current price</option>
           </select>
 
           <div className="warning">
