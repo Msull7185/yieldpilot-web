@@ -458,3 +458,115 @@ label {
     grid-template-columns: 1fr;
   }
 }
+/* ---------- MOBILE FIXES ---------- */
+@media (max-width: 700px) {
+  .page {
+    padding: 14px;
+  }
+
+  .hero {
+    min-height: auto;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px 0;
+  }
+
+  .hero h1 {
+    font-size: 42px;
+  }
+
+  .hero p {
+    font-size: 16px;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .topbar h1 {
+    font-size: 28px;
+  }
+
+  .tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tabs button {
+    width: 100%;
+    padding: 11px 8px;
+    font-size: 13px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .summary-card {
+    padding: 16px;
+  }
+
+  .summary-card b {
+    font-size: 22px;
+  }
+
+  .results-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .portfolio-table,
+  .results-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .portfolio-table table,
+  .results-table table {
+    min-width: 720px;
+  }
+
+  .portfolio-table th,
+  .results-table th,
+  .portfolio-table td,
+  .results-table td {
+    font-size: 12px;
+    padding: 9px 8px;
+  }
+
+  .portfolio-table input {
+    min-width: 90px;
+  }
+
+  .results-table {
+    font-size: 12px;
+  }
+
+  .table-detail-grid {
+    grid-template-columns: 1fr;
+    white-space: normal;
+  }
+
+  .range-box,
+  .warning {
+    font-size: 13px;
+    padding: 12px;
+  }
+
+  button {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  input,
+  select {
+    font-size: 16px;
+  }
+}
+
