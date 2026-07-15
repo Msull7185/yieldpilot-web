@@ -26,3 +26,4 @@ This package is a replacement working copy for the public `Msull7185/yieldpilot-
 ## Important limitation
 
 Finnhub is used for stock quotes, candles, and earnings. This build **does not have a live option-chain feed**, so the displayed premium is explicitly modeled from realized volatility. For a commercial product, connect a licensed options-data provider and replace `estimatePremium()` with actual bid/ask, volume, open interest, implied volatility, delta, and valid listed strikes/expirations.
+Testing GitHub Desktop
