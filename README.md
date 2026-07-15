@@ -1,30 +1,28 @@
-# YieldPilot
+# YieldPilot upgrade
 
-A portfolio-based covered call analyzer prototype. Subscribers save tickers, run weekly scans, and get plain-English income recommendations with a YieldPilot Score for each position.
+This package is a replacement working copy for the public `Msull7185/yieldpilot-web` repository.
 
-## Tech stack
+## Included
 
-- React 18
-- Vite
-- framer-motion
-- lucide-react
+- Browser persistence for portfolio and settings
+- Newly added positions included on the next analysis
+- Friday-based expiration logic
+- Real Finnhub quote, historical candle, and earnings-calendar requests
+- Realized-volatility calculation
+- Earnings-before-expiration risk warning
+- YieldPilot Score (0–100)
+- Break-even, annualized yield, covered/uncovered shares, recent range
+- Mobile-responsive portfolio and result cards
+- CSV export
+- Clear disclosure that premium is estimated, not a live options quote
 
-## Local development
+## Deploy
 
-```bash
-npm install
-npm run dev
-```
+1. Replace the corresponding files in the GitHub repository.
+2. Confirm `FINNHUB_API_KEY` exists in Vercel Project Settings → Environment Variables.
+3. Commit to `main`; Vercel should deploy automatically.
+4. Open the deployment and test at least one known ticker.
 
-The dev server runs on `http://localhost:5000`.
+## Important limitation
 
-## Production build
-
-```bash
-npm run build
-npm run preview
-```
-
-## Deployment
-
-This project is configured to deploy on Vercel as a static Vite app. See `vercel.json`.
+Finnhub is used for stock quotes, candles, and earnings. This build **does not have a live option-chain feed**, so the displayed premium is explicitly modeled from realized volatility. For a commercial product, connect a licensed options-data provider and replace `estimatePremium()` with actual bid/ask, volume, open interest, implied volatility, delta, and valid listed strikes/expirations.
