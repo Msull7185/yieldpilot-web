@@ -1,28 +1,23 @@
-# YieldPilot upgrade
+# YieldPilot v0.3
 
-This package is a replacement working copy for the public `Msull7185/yieldpilot-web` repository.
+## What changed
 
-## Included
+- Real Yahoo Finance option chains instead of modeled premiums
+- Actual listed expirations and strikes
+- Bid, ask, midpoint, volume, open interest, implied volatility, and liquidity score
+- Automatic analysis after sign-in so portfolio values populate without an extra click
+- Yahoo Finance historical prices for recent range and realized volatility
+- Finnhub earnings remain optional when `FINNHUB_API_KEY` is configured
+- Graceful per-ticker errors so one failed symbol does not stop the portfolio
+- CSV export expanded with live option-chain fields
 
-- Browser persistence for portfolio and settings
-- Newly added positions included on the next analysis
-- Friday-based expiration logic
-- Real Finnhub quote, historical candle, and earnings-calendar requests
-- Realized-volatility calculation
-- Earnings-before-expiration risk warning
-- YieldPilot Score (0–100)
-- Break-even, annualized yield, covered/uncovered shares, recent range
-- Mobile-responsive portfolio and result cards
-- CSV export
-- Clear disclosure that premium is estimated, not a live options quote
+## Deployment
 
-## Deploy
+1. Copy the contents of this folder into the local `yieldpilot-web` repository.
+2. In GitHub Desktop, commit with `YieldPilot v0.3 Yahoo option data`.
+3. Click **Push origin**.
+4. In Vercel, open the `yieldpilot-web` project and wait for the new deployment to show **Ready**.
 
-1. Replace the corresponding files in the GitHub repository.
-2. Confirm `FINNHUB_API_KEY` exists in Vercel Project Settings → Environment Variables.
-3. Commit to `main`; Vercel should deploy automatically.
-4. Open the deployment and test at least one known ticker.
+## Data warning
 
-## Important limitation
-
-Finnhub is used for stock quotes, candles, and earnings. This build **does not have a live option-chain feed**, so the displayed premium is explicitly modeled from realized volatility. For a commercial product, connect a licensed options-data provider and replace `estimatePremium()` with actual bid/ask, volume, open interest, implied volatility, delta, and valid listed strikes/expirations.
+`yahoo-finance2` is an unofficial interface to Yahoo Finance. It is appropriate for development and internal testing, but it may be delayed or interrupted and should be replaced by a licensed options-data provider before commercial launch. The displayed premium is the bid/ask midpoint, not a guaranteed trade price.

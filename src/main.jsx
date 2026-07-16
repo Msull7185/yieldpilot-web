@@ -53,10 +53,18 @@ function App() {
   const [generatedAt, setGeneratedAt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ portfolio, targetWeeksOut, targetPercentAbove }));
   }, [portfolio, targetWeeksOut, targetPercentAbove]);
+
+  useEffect(() => {
+    if (loggedIn && !hasAutoLoaded && portfolio.some((row) => row.ticker && Number(row.shares) > 0)) {
+      setHasAutoLoaded(true);
+      runAnalysis();
+    }
+  }, [loggedIn, hasAutoLoaded]);
 
   const validResults = results.filter((row) => !row.error);
   const failedResults = results.filter((row) => row.error);
@@ -135,13 +143,13 @@ function App() {
   function exportCsv() {
     const headers = [
       "Ticker","Shares","Contracts","Stock Price","Strike","Expiration",
-      "Estimated Premium","Cash Income","Option Yield","Annualized Yield",
-      "Upside","Break Even","Volatility","Earnings Date","YieldPilot Score","Risk"
+      "Bid","Ask","Mid Premium","Cash Income","Option Yield","Annualized Yield",
+      "Upside","Break Even","Implied Volatility","Volume","Open Interest","Liquidity Score","Earnings Date","YieldPilot Score","Risk"
     ];
     const lines = validResults.map((r) => [
       r.ticker, r.shares, r.contracts, r.price, r.strike, r.expiration,
-      r.premium, r.income, r.optionYield, r.annualizedYield,
-      r.upside, r.breakEven, r.annualizedVolatility, r.earningsDate || "",
+      r.bid, r.ask, r.premium, r.income, r.optionYield, r.annualizedYield,
+      r.upside, r.breakEven, r.impliedVolatility, r.volume, r.openInterest, r.liquidityScore, r.earningsDate || "",
       r.score, r.risk
     ]);
     const csv = [headers, ...lines].map((row) =>
@@ -290,16 +298,16 @@ function App() {
                     <table>
                       <thead><tr>
                         <th>Status</th><th>Ticker</th><th>Shares</th><th>Price</th><th>Strike</th><th>Expiration</th>
-                        <th>Est. premium</th><th>Income</th><th>Ann. yield</th><th>Upside</th><th>Volatility</th><th>Score</th>
+                        <th>Bid / Ask</th><th>Mid premium</th><th>Income</th><th>Ann. yield</th><th>Upside</th><th>IV</th><th>Liquidity</th><th>Score</th>
                       </tr></thead>
                       <tbody>
                         {validResults.map((r) => (
                           <tr key={r.ticker}>
                             <td><span className={`status ${r.category}`}>{r.risk}</span></td>
                             <td><b>{r.ticker}</b></td><td>{r.shares}</td><td>{money(r.price,2)}</td><td>{money(r.strike,2)}</td>
-                            <td>{r.expiration}</td><td>{money(r.premium,2)}</td><td>{money(r.income)}</td>
+                            <td>{r.expiration}</td><td>{money(r.bid,2)} / {money(r.ask,2)}</td><td>{money(r.premium,2)}</td><td>{money(r.income)}</td>
                             <td>{percent(r.annualizedYield)}</td><td>{percent(r.upside)}</td>
-                            <td>{percent(r.annualizedVolatility)}</td><td><b>{r.score}</b></td>
+                            <td>{percent(r.impliedVolatility)}</td><td>{r.liquidityScore}</td><td><b>{r.score}</b></td>
                           </tr>
                         ))}
                       </tbody>
@@ -315,8 +323,8 @@ function App() {
                 )}
 
                 <div className="disclosure">
-                  Premiums are modeled estimates based on realized stock volatility, not executable option-chain quotes.
-                  Confirm the actual bid, ask, volume, open interest, expiration, and strike with your broker before trading.
+                  Quotes are pulled from an unofficial Yahoo Finance interface and may be delayed, incomplete, or unavailable.
+                  The displayed premium is the bid/ask midpoint, not a guaranteed execution price. Confirm every order with your broker.
                 </div>
               </>
             )}
@@ -367,16 +375,20 @@ function ResultCard({ row }) {
       </div>
       <div className="trade-line"><div><span>Sell</span><b>{row.contracts} × {money(row.strike, 2)} call</b></div><div><span>Expiration</span><b>{row.expiration}</b></div></div>
       <div className="card-stats">
-        <div><span>Estimated premium</span><b>{money(row.premium, 2)}</b></div>
+        <div><span>Bid / ask</span><b>{money(row.bid, 2)} / {money(row.ask, 2)}</b></div>
         <div><span>Cash income</span><b>{money(row.income)}</b></div>
         <div><span>Annualized yield</span><b>{percent(row.annualizedYield)}</b></div>
         <div><span>Upside retained</span><b>{percent(row.upside)}</b></div>
         <div><span>Break-even</span><b>{money(row.breakEven, 2)}</b></div>
-        <div><span>Realized volatility</span><b>{percent(row.annualizedVolatility)}</b></div>
+        <div><span>Implied volatility</span><b>{percent(row.impliedVolatility)}</b></div>
       </div>
       <div className="range">
+        <span>Volume {row.volume.toLocaleString()} · Open interest {row.openInterest.toLocaleString()}</span>
+        <span>Liquidity score {row.liquidityScore}/100 · Spread {percent(row.spreadPercent)}</span>
+      </div>
+      <div className="range second">
         <span>Recent range {money(row.rangeLow,2)}–{money(row.rangeHigh,2)}</span>
-        <span>Earnings {row.earningsDate || "not found in next 120 days"}</span>
+        <span>Earnings {row.earningsDate || "not found / unavailable"}</span>
       </div>
       <p className="warning">{row.warning}</p>
       {row.uncoveredShares > 0 && <p className="micro">{row.uncoveredShares} shares remain uncovered because calls use 100-share contracts.</p>}
